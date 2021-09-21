@@ -4,22 +4,20 @@ import { compose } from 'redux';
 import { createStructuredSelector } from 'reselect';
 import { Table, Header, Container, Dimmer, Loader } from 'semantic-ui-react';
 import Pagination from 'components/Pagination';
-import { entryReportRequest } from '../redux/actions';
-import { makeSelectEntryReport, makeSelectEntryReportLoading } from '../redux/selectors';
+import { entryListRequest } from '../../entry/redux/actions';
+import { makeSelectEntryList, makeSelectEntryListLoading } from '../../entry/redux/selectors';
 
 class ReportPage extends Component {
   constructor(...args) {
     super(...args);
     this.state = {
-      deleteId: null,
-      showDeleteConfirm: false,
       page: 1,
       pageSize: 10,
     };
   }
 
   componentWillMount() {
-    this.props.reportRequest();
+    this.props.entryList();
   }
 
   onChangePage = (page) => {
@@ -43,13 +41,19 @@ class ReportPage extends Component {
     return entries.slice((page - 1) * pageSize, page * pageSize).map((entry, index) => (
       <Table.Row key={`report_${index}`}>
         <Table.Cell>
-          {entry.getIn(['_id', 'year'])} - Wk {entry.getIn(['_id', 'week'])}
+          {entry.get('Name')}
         </Table.Cell>
         <Table.Cell>
-          {(entry.get('totalDistance') / entry.get('count')).toFixed(2)}km
+          {entry.get('Timezone')}
         </Table.Cell>
         <Table.Cell>
-          {entry.get('totalDuration') ? ((entry.get('totalDistance') / entry.get('totalDuration')) * 60).toFixed(2) : 0}km/hr
+          {entry.get('Day of Week')}
+        </Table.Cell>
+        <Table.Cell>
+          {entry.get('Available at')}
+        </Table.Cell>
+        <Table.Cell>
+          {entry.get('Available until')}
         </Table.Cell>
       </Table.Row>
     ));
@@ -68,9 +72,11 @@ class ReportPage extends Component {
         <Table celled>
           <Table.Header>
             <Table.Row>
-              <Table.HeaderCell>Week</Table.HeaderCell>
-              <Table.HeaderCell>Avg Distance</Table.HeaderCell>
-              <Table.HeaderCell>Avg Speed</Table.HeaderCell>
+              <Table.HeaderCell>Name</Table.HeaderCell>
+              <Table.HeaderCell>Timezone</Table.HeaderCell>
+              <Table.HeaderCell>Day of Week</Table.HeaderCell>
+              <Table.HeaderCell>Available at</Table.HeaderCell>
+              <Table.HeaderCell>Available until</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
 
@@ -97,12 +103,12 @@ class ReportPage extends Component {
 }
 
 const mapStateToProps = createStructuredSelector({
-  entries: makeSelectEntryReport(),
-  loading: makeSelectEntryReportLoading(),
+  entries: makeSelectEntryList(),
+  loading: makeSelectEntryListLoading(),
 });
 
 const mapDispatchToProps = {
-  reportRequest: entryReportRequest,
+  entryList: entryListRequest,
 };
 
 const withConnect = connect(mapStateToProps, mapDispatchToProps);

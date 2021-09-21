@@ -4,7 +4,7 @@ const ROLES = require('../constants/role');
 const policies = require('../policies');
 
 const router = express.Router();
-router.use(policies.checkRoles([ROLES.ADMIN, ROLES.USER]));
+router.use(policies.checkRoles([ROLES.STAKEHOLDER, ROLES.USER]));
 
 router.route('/')
   .get(entryCtrl.list)

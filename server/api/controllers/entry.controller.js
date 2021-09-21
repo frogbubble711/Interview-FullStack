@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const csv = require('csv-parser');
+const fs = require('fs');
 const Entry = require('../models/entry.model');
 const ROLES = require('../constants/role');
 
@@ -28,17 +30,16 @@ function read(req, res) {
 }
 
 function list(req, res, next) {
-  let where = {};
-  if (req.user.role === ROLES.USER) {
-    where = { user: req.user._id };
-  }
-
-  Entry.find(where)
-  .populate('user')
-  .then((entries) => {
-    res.json(entries);
+  let csvData = [];
+  fs.createReadStream('data.csv')
+  .pipe(csv())
+  .on('data', (row) => {
+    csvData.push(row);
   })
-  .catch(next);
+  .on('end', () => {
+    console.log('CSV file successfully processed');
+    res.json(csvData);
+  });
 }
 
 function remove(req, res, next) {
@@ -85,7 +86,7 @@ function getEntryByID(req, res, next, id) {
       return;
     }
 
-    if (entry.user.toString() !== req.user._id && req.user.role !== ROLES.ADMIN) {
+    if (entry.user.toString() !== req.user._id && req.user.role !== ROLES.STAKEHOLDER) {
       res.status(403).json({ message: 'You are not authorized to access this entry' });
       return;
     }

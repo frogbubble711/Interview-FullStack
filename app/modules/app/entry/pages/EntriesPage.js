@@ -2,13 +2,12 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import moment from 'moment';
-import { Link } from 'react-router-dom';
 import { createStructuredSelector } from 'reselect';
-import { Segment, Table, Header, Container, Dimmer, Loader, Button, Confirm } from 'semantic-ui-react';
+import { Table, Header, Container, Dimmer, Loader, Button, Modal, Grid, Confirm } from 'semantic-ui-react';
 import Pagination from 'components/Pagination';
-import DateRangeFilter from 'components/DateRangeFilter';
-import { entryListRequest, entryDeleteRequest } from '../redux/actions';
+import { entryListRequest } from '../redux/actions';
 import { makeSelectEntryList, makeSelectEntryListLoading } from '../redux/selectors';
+import { WEEKDAYS } from 'utils/constants.js';
 
 class EntriesPage extends Component {
   constructor(...args) {
@@ -18,8 +17,10 @@ class EntriesPage extends Component {
       showDeleteConfirm: false,
       page: 1,
       pageSize: 10,
-      from: moment().subtract(30, 'days').toDate(),
-      to: moment().toDate(),
+      scheduleModalShow: false,
+      currentEntry: null,
+      currentAppointment: null,
+      bookedAppointment: new Array(100),
     };
   }
 
@@ -31,17 +32,22 @@ class EntriesPage extends Component {
     this.setState({ page });
   }
 
-  onRemove = (deleteId) => () => {
-    this.setState({ deleteId, showDeleteConfirm: true });
+  handleBook = (index) => {
+    this.setState({ showDeleteConfirm: true, currentAppointment: index, });
   }
 
-  onChangeFilter = (filterName, value) => {
-    this.setState({ [filterName]: value });
-  };
+  handleModalOpen = (entry) => {
+    this.setState({
+      scheduleModalShow: true,
+      currentEntry: entry,
+    });
+  }
 
   handleConfirm = () => {
-    this.props.entryDelete(this.state.deleteId);
-    this.setState({ showDeleteConfirm: false });
+    const { currentAppointment, bookedAppointment } = this.state;
+
+    bookedAppointment[currentAppointment] = true;
+    this.setState({ showDeleteConfirm: false, bookedAppointment });
   }
 
   handleCancel = () => this.setState({ showDeleteConfirm: false })
@@ -59,29 +65,30 @@ class EntriesPage extends Component {
       );
     }
 
-    return entries.slice((page - 1) * pageSize, page * pageSize).map((entry) => (
-      <Table.Row key={entry.get('_id')}>
+    return entries.slice((page - 1) * pageSize, page * pageSize).map((entry, index) => (
+      <Table.Row key={index}>
         <Table.Cell>
-          {entry.getIn(['user', 'firstName'])}
-          &nbsp;
-          {entry.getIn(['user', 'lastName'])}
+          {entry.get('Name')}
         </Table.Cell>
         <Table.Cell>
-          {moment(entry.get('date')).format('MM/DD/YYYY')}
+          {entry.get('Timezone')}
         </Table.Cell>
         <Table.Cell>
-          {entry.get('distance')}km
+          {entry.get('Day of Week')}
         </Table.Cell>
         <Table.Cell>
-          {entry.get('duration')}mins
+          {entry.get('Available at')}
         </Table.Cell>
         <Table.Cell>
-          {entry.get('duration') ? ((entry.get('distance') / entry.get('duration')) * 60).toFixed(2) : entry.get('duration')}km/hr
+          {entry.get('Available until')}
         </Table.Cell>
         <Table.Cell>
-          <Button color="teal" size="mini" as={Link} to={`/entries/${entry.get('_id')}`} content="View" icon="edit" labelPosition="left" />
-          &nbsp;
-          <Button color="orange" size="mini" content="Remove" icon="minus" labelPosition="left" onClick={this.onRemove(entry.get('_id'))} />
+          <Button
+            color="teal"
+            size="mini"
+            content="Schedule"
+            onClick={() => this.handleModalOpen(entry)}
+          />
         </Table.Cell>
       </Table.Row>
     ));
@@ -89,53 +96,54 @@ class EntriesPage extends Component {
 
   render() {
     const { entries, loading } = this.props;
-    const { page, pageSize, showDeleteConfirm, from, to } = this.state;
-    const filteredEntries = entries.filter((entry) =>
-      moment(from).startOf('day').diff(moment(entry.get('date'))) < 0 &&
-      moment(to).endOf('day').diff(moment(entry.get('date'))) >= 0
-    );
+    const { page, pageSize, scheduleModalShow, currentEntry, showDeleteConfirm, bookedAppointment } = this.state;
+    const today = new Date();
+
+    const availableEntires = entries.filter((entry) => {
+      const utcOffset = moment().utcOffset(entry.get('Timezone').split(':').at(0).split('GMT').at(1)).utcOffset() / 60;
+      const availableUntil = moment(entry.get('Available until'), ['hh:mm A']).add(utcOffset * -1, 'hours').format('HH');
+
+      return moment(today).day() < WEEKDAYS.indexOf(entry.get('Day of Week')) + 1 && availableUntil >= today.getUTCHours()
+    });
+
+    const availableAt = currentEntry && moment(currentEntry.get('Available at'), ['hh:mm A']).valueOf();
+    const availableUntil = currentEntry && moment(currentEntry.get('Available until'), ['hh:mm A']).valueOf();
+    const scheduleAvailable = (availableUntil - availableAt) / 30 / 60 / 1000;
 
     return (
       <Container>
         <Confirm
           open={showDeleteConfirm}
-          content="Are you sure to delete this entry?"
+          content="Are you sure to book this appointment?"
           onCancel={this.handleCancel}
           onConfirm={this.handleConfirm}
         />
+
         <Dimmer active={loading}>
           <Loader />
         </Dimmer>
         <Header as="h2" content="Entries" />
-        <Segment>
-          <Header as="h4" content="Filter" dividing />
-          <DateRangeFilter
-            from={from}
-            to={to}
-            onChange={this.onChangeFilter}
-          />
-        </Segment>
         <Table celled>
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell>Name</Table.HeaderCell>
-              <Table.HeaderCell>Date</Table.HeaderCell>
-              <Table.HeaderCell>Distance</Table.HeaderCell>
-              <Table.HeaderCell>Duration</Table.HeaderCell>
-              <Table.HeaderCell>Avg Speed</Table.HeaderCell>
+              <Table.HeaderCell>Timezone</Table.HeaderCell>
+              <Table.HeaderCell>Day of Week</Table.HeaderCell>
+              <Table.HeaderCell>Available at</Table.HeaderCell>
+              <Table.HeaderCell>Available until</Table.HeaderCell>
               <Table.HeaderCell>Actions</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
 
           <Table.Body>
-            {this.renderEntries(filteredEntries)}
+            {this.renderEntries(availableEntires)}
           </Table.Body>
 
           <Table.Footer>
             <Table.Row>
               <Table.HeaderCell colSpan="6">
                 <Pagination
-                  total={filteredEntries.size}
+                  total={availableEntires.size}
                   currentPage={page}
                   onChange={this.onChangePage}
                   perPage={pageSize}
@@ -144,6 +152,31 @@ class EntriesPage extends Component {
             </Table.Row>
           </Table.Footer>
         </Table>
+
+        <Modal
+          size="small"
+          open={currentEntry && scheduleModalShow}
+          onClose={() => this.setState({ scheduleModalShow: false, currentEntry: null })}
+        >
+          <Modal.Header>{ currentEntry && currentEntry.get('Name') } - { currentEntry && currentEntry.get('Day of Week') }</Modal.Header>
+          <Modal.Content>
+            <Grid>
+              <Grid.Row columns={5}>
+                {[...Array(scheduleAvailable)].map((x, index) =>
+                  !bookedAppointment[index] && <Grid.Column key={index} className="schedules">
+                    <Button
+                      primary
+                      size="tiny"
+                      content={`${currentEntry && moment(currentEntry.get('Available at'), ['hh:mm A']).add(30 * index, 'minutes').format('HH:mm')} -
+                                ${currentEntry && moment(currentEntry.get('Available at'), ['hh:mm A']).add(30 * ( index + 1 ), 'minutes').format('HH:mm')}`}
+                      onClick={() => this.handleBook(index)}
+                    />
+                  </Grid.Column>
+                )}
+              </Grid.Row>
+            </Grid>
+          </Modal.Content>
+        </Modal>
       </Container>
     );
   }
@@ -156,7 +189,6 @@ const mapStateToProps = createStructuredSelector({
 
 const mapDispatchToProps = {
   entryList: entryListRequest,
-  entryDelete: entryDeleteRequest,
 };
 
 const withConnect = connect(mapStateToProps, mapDispatchToProps);

@@ -27,10 +27,10 @@ class RootApp extends Component {
     return (
       <div className="app">
         <Helmet
-          titleTemplate="%s - Jogging Track"
-          defaultTitle="Jogging Track"
+          titleTemplate="%s - Booking Appointment"
+          defaultTitle="Booking Appointment"
         >
-          <meta name="description" content="Jogging Track Application" />
+          <meta name="description" content="Booking Appointment Application" />
         </Helmet>
 
         <Switch>

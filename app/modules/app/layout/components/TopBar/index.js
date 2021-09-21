@@ -16,18 +16,17 @@ class TopBar extends Component {
       <Menu fixed="top" inverted>
         <Container>
           <Menu.Item as={Link} header to="/">
-            Jogging Track
+          Booking Appointment
           </Menu.Item>
-          {(currentUser.get('role') === 'admin' || currentUser.get('role') === 'manager') && <Dropdown item simple text="Users">
+          {(currentUser.get('role') === 'stakeholder') && <Dropdown item simple text="Users">
             <Dropdown.Menu>
               <Dropdown.Item as={Link} to="/users/new">Add New User</Dropdown.Item>
               <Dropdown.Item as={Link} to="/users">User List</Dropdown.Item>
+              <Dropdown.Item as={Link} to="/report">Weekly Report</Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>}
-          {(currentUser.get('role') === 'admin' || currentUser.get('role') === 'user') && <Dropdown item simple text="Entries">
+          {(currentUser.get('role') === 'stakeholder' || currentUser.get('role') === 'user') && <Dropdown item simple text="Entries">
             <Dropdown.Menu>
-              <Dropdown.Item as={Link} to="/entries/new">Add New Entry</Dropdown.Item>
-              <Dropdown.Item as={Link} to="/report">Weekly Report</Dropdown.Item>
               <Dropdown.Item as={Link} to="/entries">Entry List</Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>}

@@ -9,7 +9,7 @@ function create(req, res, next) {
     password: req.body.password,
   });
 
-  if (req.user.role === ROLES.ADMIN && req.body.role) {
+  if (req.user.role === ROLES.STAKEHOLDER && req.body.role) {
     user.role = req.body.role;
   }
 
@@ -31,7 +31,7 @@ function update(req, res, next) {
     req.userModel.password = req.body.password;
   }
 
-  if (req.user.role === ROLES.ADMIN && req.body.role) {
+  if (req.user.role === ROLES.STAKEHOLDER && req.body.role) {
     req.userModel.role = req.body.role;
   }
 
@@ -48,9 +48,6 @@ function read(req, res) {
 
 function list(req, res, next) {
   let where = {};
-  if (req.user.role === ROLES.MANAGER) {
-    where = { role: { $ne: ROLES.ADMIN } };
-  }
 
   User.find(where)
   .then((users) => {
